@@ -27,7 +27,7 @@ const nav=['Proyectos','Rendimiento','Metas','Feedback'];
 
 $('#googleLogin').onclick=()=>signInWithPopup(auth,provider).catch(e=>showLoginError(e.message));
 $('#logout').onclick=()=>signOut(auth);$('#closeModal').onclick=()=>$('#modal').classList.add('hidden');
-onAuthStateChanged(auth,async user=>{if(!user){state.user=null;$('#login').classList.remove('hidden');$('#app').classList.add('hidden');return}try{if(user.email.toLowerCase()!==OWNER_EMAIL){const allowed=await getDoc(doc(db,'authorizedUsers',user.email.toLowerCase()));if(!allowed.exists()){await signOut(auth);showLoginError('Este correo no está autorizado. Pide al administrador que lo agregue.');return}}state.user=user;$('#userEmail').textContent=user.email;$('#login').classList.add('hidden');$('#app').classList.remove('hidden');listen();render()}catch(e){showLoginError('No se pudo verificar el acceso: '+e.message)}});
+onAuthStateChanged(auth,user=>{if(!user){state.user=null;$('#login').classList.remove('hidden');$('#app').classList.add('hidden');return}state.user=user;$('#userEmail').textContent=user.email;$('#loginError').classList.add('hidden');$('#login').classList.add('hidden');$('#app').classList.remove('hidden');listen();render()});
 function showLoginError(text){$('#loginError').textContent=text;$('#loginError').classList.remove('hidden')}
 function listen(){[['projects','projects'],['tasks','tasks'],['goals','goals'],['feedback','feedback']].forEach(([key,name])=>onSnapshot(query(collection(db,name),orderBy('createdAt','desc')),s=>{state[key]=s.docs.map(d=>({id:d.id,...d.data()}));render()}))}
 function go(v){state.view=v;render()}

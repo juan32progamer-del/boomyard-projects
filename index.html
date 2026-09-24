@@ -17,7 +17,7 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}fro
 import{getFirestore,collection,addDoc,doc,getDoc,updateDoc,onSnapshot,query,orderBy,serverTimestamp}from'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
 
 // Pega aquí la configuración que Firebase te entrega al registrar una app web.
-const firebaseConfig={apiKey:'AIzaSyDnL8e0d1lY1hxO7Eiqtux85yX1GF6JyyQ',authDomain:'boomyard-projects.firebaseapp.com',projectId:'boomyard-projects',storageBucket:'boomyard-projects.firebasestorage.app',messagingSenderId:'511170456486',appId:'1:511170456486:web:d049b814f0e3df365f3d67'};
+const firebaseConfig={apiKey:'AIzaSyDnL8eOd1lYlhxO7Eiqtux85yX1GF6JyyQ',authDomain:'boomyard-projects.firebaseapp.com',projectId:'boomyard-projects',storageBucket:'boomyard-projects.firebasestorage.app',messagingSenderId:'511170456486',appId:'1:511170456486:web:d049b814f0e3df365f3d67'};
 const fb=initializeApp(firebaseConfig),auth=getAuth(fb),db=getFirestore(fb),provider=new GoogleAuthProvider();
 const state={view:'Proyectos',projects:[],tasks:[],goals:[],feedback:[],user:null};
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

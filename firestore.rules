@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function email() { return request.auth.token.email; }
+    function owner() {
+      return signedIn() && request.auth.token.get('email_verified', false) == true
+        && email() == 'juan32progamer@gmail.com';
+    }
+    function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function role() {
+      return owner() ? 'owner' :
+        (signedIn() && exists(profilePath()) ? get(profilePath()).data.get('role', 'employee') : 'employee');
+    }
+    function admin() { return owner() || role() == 'admin'; }
+    function manager() { return admin() || role() == 'lead'; }
+    function staff() { return manager() || role() == 'employee'; }
+    function ownReport(data) {
+      return signedIn() && (
+        data.get('authorUid', '') == request.auth.uid ||
+        data.get('createdBy', '') == email() ||
+        data.get('authorEmail', '') == email());
+    }
+    function tracked(kind, id, before, after, action) {
+      let event = getAfter(/databases/$(database)/documents/auditLogs/$(after.auditId)).data;
+      return after.auditId is string && after.auditId.size() > 0
+        && event.kind == kind && event.targetId == id && event.action == action
+        && event.actorUid == request.auth.uid && event.actorEmail == email()
+        && event.before == before && event.after == after && event.at == request.time;
+    }
+    function nonDeleted(data) { return data.get('deletedAt', null) == null; }
+    function softDelete(before, after) {
+      return nonDeleted(before) && after.deletedBy == request.auth.uid
+        && after.deletedAt is timestamp && after.deletedAt <= request.time
+        && after.diff(before).affectedKeys().hasOnly(['deletedAt', 'deletedBy', 'updatedAt', 'updatedBy', 'auditId']);
+    }
+
+    match /users/{uid} {
+      allow read: if staff() || (signedIn() && uid == request.auth.uid);
+      allow create: if signedIn() && uid == request.auth.uid
+        && request.resource.data.email == email()
+        && request.resource.data.role == (owner() ? 'owner' : 'employee')
+        && request.resource.data.keys().hasOnly(['email','role','displayName','googlePhoto','lastLogin']);
+      allow update: if (owner() &&
+          (uid == request.auth.uid ? request.resource.data.role == 'owner'
+            : request.resource.data.role in ['admin','lead','employee','client'])) ||
+        (admin() && uid != request.auth.uid && resource.data.get('role','employee') != 'owner'
+          && request.resource.data.role in ['lead','employee','client']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role','workArea'])) ||
+        (signedIn() && uid == request.auth.uid
+          && (request.resource.data.email == resource.data.email ||
+            (resource.data.get('email', null) == null && request.resource.data.email == email()))
+          && request.resource.data.get('role', 'employee') == resource.data.get('role', 'employee')
+          && (resource.data.get('role', null) != null || request.resource.data.get('role', '') == 'employee')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['email','role','displayName','avatar','googlePhoto','lastLogin','updatedAt']));
+      allow delete: if false;
+    }
+
+    match /dailyReports/{id} {
+      allow get, list: if signedIn() && (admin() || ownReport(resource.data));
+      allow create: if staff() && ownReport(request.resource.data)
+        && request.resource.data.get('authorUid', '') == request.auth.uid
+        && request.resource.data.get('authorEmail', '') == email()
+        && request.resource.data.get('createdBy', '') == email()
+        && nonDeleted(request.resource.data)
+        && tracked('dailyReports', id, null, request.resource.data, 'create');
+      allow update: if staff() && (admin() || ownReport(resource.data))
+        && request.resource.data.get('authorUid', '') == resource.data.get('authorUid', '')
+        && request.resource.data.get('authorEmail', '') == resource.data.get('authorEmail', '')
+        && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+        && (request.resource.data.get('deletedAt', null) == null || admin())
+        && tracked('dailyReports', id, resource.data, request.resource.data,
+          request.resource.data.get('deletedAt', null) == null ? 'update' : 'delete')
+        && (request.resource.data.get('deletedAt', null) == null || softDelete(resource.data, request.resource.data));
+      allow delete: if false;
+    }
+
+    match /projects/{id} {
+      allow read: if staff() || (signedIn() && role() == 'client'
+        && resource.data.get('clientUid', '') == request.auth.uid);
+      allow create: if staff() && request.resource.data.createdBy == email()
+        && (manager() || request.resource.data.get('clientUid', '') == '')
+        && nonDeleted(request.resource.data)
+        && tracked('projects', id, null, request.resource.data, 'create');
+      allow update: if (staff() ||
+          (signedIn() && role() == 'client' && resource.data.get('clientUid', '') == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+              ['attachments','updatedAt','updatedBy','auditId'])
+            && request.resource.data.attachments.size() == resource.data.get('attachments', []).size() + 1
+            && request.resource.data.attachments.hasAll(resource.data.get('attachments', []))))
+        && nonDeleted(resource.data)
+        && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+        && (manager() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['attachments','updatedAt','updatedBy','auditId']))
+        && tracked('projects', id, resource.data, request.resource.data,
+          request.resource.data.get('deletedAt', null) == null ? 'update' : 'delete')
+        && (request.resource.data.get('deletedAt', null) == null ||
+          (admin() && softDelete(resource.data, request.resource.data)));
+      allow delete: if false;
+    }
+
+    match /tasks/{id} {
+      allow read: if staff();
+      allow create: if manager() && request.resource.data.createdBy == email()
+        && nonDeleted(request.resource.data)
+        && tracked('tasks', id, null, request.resource.data, 'create');
+      allow update: if staff() && nonDeleted(resource.data)
+        && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
+        && (manager() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['status','completedAt','updatedAt','updatedBy','auditId']))
+        && tracked('tasks', id, resource.data, request.resource.data,
+          request.resource.data.get('deletedAt', null) == null ? 'update' : 'delete')
+        && (request.resource.data.get('deletedAt', null) == null ||
+          (admin() && softDelete(resource.data, request.resource.data)));
+      allow delete: if false;
+    }
+
+    match /auditLogs/{eventId} {
+      allow read: if admin();
+      allow create: if signedIn()
+        && request.resource.data.kind in ['projects','tasks','dailyReports']
+        && request.resource.data.action in ['create','update','delete']
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorEmail == email()
+        && request.resource.data.at == request.time
+        && request.resource.data.targetId is string
+        && request.resource.data.keys().hasOnly(
+          ['kind','targetId','action','actorUid','actorEmail','at','before','after'])
+        && request.resource.data.after.auditId == eventId
+        && request.resource.data.after == getAfter(
+          /databases/$(database)/documents/$(request.resource.data.kind)/$(request.resource.data.targetId)).data
+        && ((request.resource.data.action == 'create'
+          && !exists(/databases/$(database)/documents/$(request.resource.data.kind)/$(request.resource.data.targetId))
+          && request.resource.data.before == null)
+          || (request.resource.data.action != 'create'
+            && request.resource.data.before == get(
+              /databases/$(database)/documents/$(request.resource.data.kind)/$(request.resource.data.targetId)).data));
+      allow update, delete: if false;
+    }
+
+    match /chatMessages/{id} {
+      allow read: if staff();
+      allow create: if staff() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
+      allow delete: if staff() && (admin() || resource.data.uid == request.auth.uid);
+      allow update: if false;
+    }
+    match /goals/{id} {
+      allow read: if staff();
+      allow create, update: if manager();
+      allow delete: if admin();
+    }
+    match /feedback/{id} {
+      allow read: if staff() || (signedIn() && role() == 'client'
+        && resource.data.get('createdBy', '') == email());
+      allow create: if signedIn() && request.resource.data.createdBy == email();
+      allow update, delete: if admin();
+    }
+    match /appSettings/{id} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

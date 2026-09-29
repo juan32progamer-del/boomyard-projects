@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-boomyard 'node tests/firestore-rules.mjs && node tests/storage-rules.mjs'"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "firebase-tools": "13.35.1"
+  }
+}

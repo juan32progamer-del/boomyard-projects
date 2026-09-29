@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function owner() {
+      return signedIn() && request.auth.token.email_verified == true
+        && request.auth.token.email == 'juan32progamer@gmail.com';
+    }
+    function staff() {
+      return owner() || (signedIn() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in
+          ['admin','lead','employee']);
+    }
+    match /avatars/{uid}/{fileName} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+    match /projects/{projectId}/{fileName} {
+      allow read: if staff() || (signedIn() &&
+        firestore.exists(/databases/(default)/documents/projects/$(projectId)) &&
+        firestore.get(/databases/(default)/documents/projects/$(projectId)).data.clientUid == request.auth.uid);
+      allow create: if (staff() || (signedIn() &&
+          firestore.exists(/databases/(default)/documents/projects/$(projectId)) &&
+          firestore.get(/databases/(default)/documents/projects/$(projectId)).data.clientUid == request.auth.uid
+          && request.resource.contentType.matches('image/.*'))) &&
+        request.resource.size <= 15 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/.*') ||
+         request.resource.contentType == 'application/pdf');
+      allow update, delete: if false;
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

@@ -1,10 +1,20 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
       "firebase.json",
       ".firebaserc",
       "README.md",
+      "**/*.rules",
+      "tests/**",
+      "package.json",
+      "package-lock.json",
       "**/.*",
       "**/node_modules/**"
     ],

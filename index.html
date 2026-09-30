@@ -56,10 +56,12 @@ onAuthStateChanged(auth,async user=>{
   if(!state.userEmail){await signOut(auth);showLoginError('Google did not provide your email. Sign in again. / Google no proporcionó tu correo. Vuelve a iniciar sesión.');return}
   try{
     const profileRef=doc(db,'users',user.uid),existing=await getDoc(profileRef);
-    if(!existing.exists())await setDoc(profileRef,{email:state.userEmail,role:isOwner()?'owner':'employee',displayName:user.displayName||state.userEmail.split('@')[0],googlePhoto:user.photoURL||'',lastLogin:serverTimestamp()});
-    else await updateDoc(profileRef,{...(existing.data().email?{}:{email:state.userEmail}),...(isOwner()?{role:'owner'}:existing.data().role?{}:{role:'employee'}),lastLogin:serverTimestamp()});
     state.profile=existing.exists()?existing.data():{role:isOwner()?'owner':'employee'};
     state.role=isOwner()?'owner':state.profile.role||'employee';
+    try{
+      if(!existing.exists())await setDoc(profileRef,{email:state.userEmail,role:isOwner()?'owner':'employee',displayName:user.displayName||state.userEmail.split('@')[0],googlePhoto:user.photoURL||'',lastLogin:serverTimestamp()});
+      else await updateDoc(profileRef,{...(existing.data().email?{}:{email:state.userEmail}),...(isOwner()?{role:'owner'}:existing.data().role?{}:{role:'employee'}),lastLogin:serverTimestamp()});
+    }catch(profileError){console.warn('Could not save profile login timestamp:',profileError)}
   }catch(error){await signOut(auth);showLoginError('Could not load your access / No se pudo cargar tu acceso: '+error.message);return}
   $('#userEmail').textContent=state.userEmail;$('#loginError').classList.add('hidden');$('#login').classList.add('hidden');$('#app').classList.remove('hidden');render();listen();
 });

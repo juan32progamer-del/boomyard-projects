@@ -55,13 +55,23 @@ def main():
         print("ERROR: Google Cloud Shell is not authenticated for this project.")
         return 1
     print(f"Project: {PROJECT}")
-    local_rules = Path(__file__).resolve().parents[1] / "firestore.rules"
+    local_rules = Path(__file__).resolve().parents[1] / "firestore.rules" if __file__ != "<stdin>" else Path("/nonexistent/firestore.rules")
+    if local_rules.exists():
+        expected = local_rules.read_text()
+    else:
+        url = f"https://raw.githubusercontent.com/juan32progamer-del/boomyard-projects/main/firestore.rules"
+        try:
+            with urllib.request.urlopen(url, timeout=20) as response:
+                expected = response.read().decode()
+        except (OSError, UnicodeError) as error:
+            print(f"Could not fetch repository rules: {error}")
+            expected = None
     try:
         release = fetch(f"https://firebaserules.googleapis.com/v1/projects/{PROJECT}/releases/cloud.firestore", token)
         ruleset = fetch(f"https://firebaserules.googleapis.com/v1/{release['rulesetName']}", token)
         live_rules = "\n".join(item.get("content", "") for item in ruleset.get("source", {}).get("files", []))
-        same = local_rules.exists() and live_rules.strip() == local_rules.read_text().strip()
-        print(f"Firestore rules: {'MATCH repo' if same else 'DIFFER from repo'}")
+        same = expected is not None and live_rules.strip() == expected.strip()
+        print(f"Firestore rules: {'MATCH repo' if same else 'DIFFER from repo or comparison unavailable'}")
         print(f"Active rules release: {release.get('rulesetName', 'unknown')}")
         print(f"Live rules SHA256: {hashlib.sha256(live_rules.strip().encode()).hexdigest()[:16]}")
         print(f"Live dailyReports read for signed-in users: {('allow get, list: if signedIn();' in live_rules)}")

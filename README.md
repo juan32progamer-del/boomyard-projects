@@ -10,13 +10,13 @@ Google sign-in is open to anyone with a Google account and creates a profile wit
 | --- | --- |
 | Owner | All team records, roles, settings and change history |
 | Admin | Team Daily reports, projects, tasks, settings, role assignments below admin and history |
-| Lead | Projects, tasks and their own Daily reports |
-| Employee | Projects, task status and their own Daily reports |
-| Client | Create and view their own project requests, upload photos and leave notes through Feedback |
+| Lead | Projects, tasks and team Daily reports |
+| Employee | Projects, task status and team Daily reports |
+| Client | View projects and team Daily reports, submit their own projects, upload photos and leave notes through Feedback |
 
-The client role uses the project's `clientUid`. New client submissions assign the submitting user automatically. Admins can assign an existing client account while editing a team project. Projects without a client assignment remain invisible to clients. Existing employee profiles keep their assigned roles; the owner can change them in Settings. The UI and Firebase rules enforce the same access boundaries.
+The client role uses the project's `clientUid` for photo upload access. New client submissions assign the submitting user automatically. Admins can assign an existing client account while editing a team project. Existing employee profiles keep their assigned roles; the owner can change them in Settings. All signed-in Google accounts can read project and Daily data; writes remain role-scoped.
 
-Daily reports are retrieved without ordering by `createdAt`, so old reports missing that field remain visible. Non-admins query their own reports by `authorUid`, `createdBy` or `authorEmail`; admins query the collection. The archive sorts by report date and can filter by week, fortnight or exact date.
+Daily reports are retrieved without ordering by `createdAt`, so old reports missing that field remain visible. Everyone signed in reads the collection. The archive sorts by report date and can filter by week, fortnight or exact date. On the verified owner's next login, missing September 28 and 29, 2026 reports are added once with eight hours and no blockers.
 
 ## Change history
 

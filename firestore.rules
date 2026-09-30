@@ -10,7 +10,7 @@ service cloud.firestore {
     function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
     function role() {
       return owner() ? 'owner' :
-        (signedIn() && exists(profilePath()) ? get(profilePath()).data.get('role', 'employee') : 'employee');
+        (signedIn() && exists(profilePath()) ? get(profilePath()).data.get('role', 'client') : 'client');
     }
     function admin() { return owner() || role() == 'admin'; }
     function manager() { return admin() || role() == 'lead'; }
@@ -39,7 +39,7 @@ service cloud.firestore {
       allow read: if staff() || (signedIn() && uid == request.auth.uid);
       allow create: if signedIn() && uid == request.auth.uid
         && request.resource.data.email == email()
-        && request.resource.data.role == (owner() ? 'owner' : 'employee')
+        && request.resource.data.role == (owner() ? 'owner' : 'client')
         && request.resource.data.keys().hasOnly(['email','role','displayName','googlePhoto','lastLogin']);
       allow update: if (owner() &&
           (uid == request.auth.uid ? request.resource.data.role == 'owner'
@@ -50,8 +50,8 @@ service cloud.firestore {
         (signedIn() && uid == request.auth.uid
           && (request.resource.data.email == resource.data.email ||
             (resource.data.get('email', null) == null && request.resource.data.email == email()))
-          && request.resource.data.get('role', 'employee') == resource.data.get('role', 'employee')
-          && (resource.data.get('role', null) != null || request.resource.data.get('role', '') == 'employee')
+          && request.resource.data.get('role', 'client') == resource.data.get('role', 'client')
+          && (resource.data.get('role', null) != null || request.resource.data.get('role', '') == 'client')
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
             ['email','role','displayName','avatar','googlePhoto','lastLogin','updatedAt']));
       allow delete: if false;
@@ -79,8 +79,9 @@ service cloud.firestore {
     match /projects/{id} {
       allow read: if staff() || (signedIn() && role() == 'client'
         && resource.data.get('clientUid', '') == request.auth.uid);
-      allow create: if staff() && request.resource.data.createdBy == email()
-        && (manager() || request.resource.data.get('clientUid', '') == '')
+      allow create: if signedIn() && request.resource.data.createdBy == email()
+        && (staff() && (manager() || request.resource.data.get('clientUid', '') == '')
+          || role() == 'client' && request.resource.data.get('clientUid', '') == request.auth.uid)
         && nonDeleted(request.resource.data)
         && tracked('projects', id, null, request.resource.data, 'create');
       allow update: if (staff() ||

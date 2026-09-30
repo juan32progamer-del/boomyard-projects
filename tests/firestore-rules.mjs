@@ -11,6 +11,8 @@ try{
  await env.withSecurityRulesDisabled(async ctx=>{const db=ctx.firestore();await setDoc(doc(db,'users','employee'),{email:'worker@example.com',role:'employee'});await setDoc(doc(db,'users','admin'),{email:'admin@example.com',role:'admin'});await setDoc(doc(db,'users','owner'),{email:'juan32progamer@gmail.com',role:'owner'});await setDoc(doc(db,'users','client'),{email:'client@example.com',role:'client'});await setDoc(doc(db,'dailyReports','legacy'),{authorEmail:'worker@example.com',createdBy:'worker@example.com',reportDate:'2026-09-25',accomplished:'V1.2'});await setDoc(doc(db,'projects','p1'),{name:'Work',createdBy:'worker@example.com',createdAt:Timestamp.now()});await setDoc(doc(db,'projects','p2'),{name:'Assigned',createdBy:'worker@example.com',clientUid:'client',createdAt:Timestamp.now()})});
  await assertSucceeds(getDoc(doc(employee,'dailyReports','legacy')));
  await assertFails(getDoc(doc(stranger,'dailyReports','legacy')));
+ await assertSucceeds(setDoc(doc(stranger,'users','stranger'),{email:'stranger@example.com',role:'client',displayName:'Stranger',googlePhoto:'',lastLogin:serverTimestamp()}));
+ await assertFails(updateDoc(doc(stranger,'users','stranger'),{role:'employee'}));
  await assertSucceeds(getDoc(doc(owner,'dailyReports','legacy')));
  await assertSucceeds(getDocs(collection(owner,'dailyReports')));
  await assertFails(getDocs(collection(employee,'dailyReports')));
@@ -28,6 +30,10 @@ try{
  const clientBefore=(await getDoc(doc(client,'projects','p2'))).data(),clientChanges={attachments:[{name:'reference.png',type:'image/png'}],updatedAt:Timestamp.now(),updatedBy:'client',auditId:'clientPhoto1'};
  const clientBatch=writeBatch(client);clientBatch.update(doc(client,'projects','p2'),clientChanges);clientBatch.set(doc(client,'auditLogs','clientPhoto1'),{kind:'projects',targetId:'p2',action:'update',actorUid:'client',actorEmail:'client@example.com',at:serverTimestamp(),before:clientBefore,after:{...clientBefore,...clientChanges}});await assertSucceeds(clientBatch.commit());
  await assertFails(updateDoc(doc(client,'projects','p2'),{name:'Unauthorized rename'}));
+ const clientProject={name:'Client request',clientUid:'client',createdBy:'client@example.com',attachments:[],createdAt:Timestamp.now(),auditId:'clientCreate'};
+ const clientCreate=writeBatch(client);clientCreate.set(doc(client,'projects','clientRequest'),clientProject);clientCreate.set(doc(client,'auditLogs','clientCreate'),{kind:'projects',targetId:'clientRequest',action:'create',actorUid:'client',actorEmail:'client@example.com',at:serverTimestamp(),before:null,after:clientProject});await assertSucceeds(clientCreate.commit());
+ await assertSucceeds(getDoc(doc(client,'projects','clientRequest')));
+ await assertFails(getDoc(doc(stranger,'projects','clientRequest')));
  const day=Timestamp.now(),report={reportDate:'2026-09-26',accomplished:'Archive',nextSteps:'Review',author:'Worker',authorEmail:'worker@example.com',authorUid:'employee',createdBy:'worker@example.com',createdAt:day,auditId:'event2'};
  const create=writeBatch(employee);create.set(doc(employee,'dailyReports','r2'),report);create.set(doc(employee,'auditLogs','event2'),{kind:'dailyReports',targetId:'r2',action:'create',actorUid:'employee',actorEmail:'worker@example.com',at:serverTimestamp(),before:null,after:report});await assertSucceeds(create.commit());
  await assertSucceeds(getDocs((await import('firebase/firestore')).query(collection(employee,'dailyReports'),(await import('firebase/firestore')).where('authorUid','==','employee'))));
@@ -38,6 +44,6 @@ try{
  await assertFails(updateDoc(doc(admin,'users','employee'),{role:'admin'}));
  await env.withSecurityRulesDisabled(async ctx=>{await setDoc(doc(ctx.firestore(),'users','oldUser'),{email:null,displayName:'Old'})});
  const oldUser=env.authenticatedContext('oldUser',{email:'old@example.com',email_verified:true}).firestore();
- await assertSucceeds(updateDoc(doc(oldUser,'users','oldUser'),{email:'old@example.com',role:'employee',lastLogin:serverTimestamp()}));
+ await assertSucceeds(updateDoc(doc(oldUser,'users','oldUser'),{email:'old@example.com',role:'client',lastLogin:serverTimestamp()}));
  console.log('Rules tests passed: legacy Daily, ownership, role escalation, audited update, log immutability');
 }finally{await env.cleanup()}

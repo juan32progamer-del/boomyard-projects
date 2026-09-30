@@ -4,7 +4,7 @@ Static web app hosted on GitHub Pages and optionally Firebase Hosting. Firebase 
 
 ## Access
 
-Google sign-in creates a profile with the `employee` role. The verified owner account is `juan32progamer@gmail.com`. In **Settings → Team access**, the owner can assign `admin`, `lead`, `employee` or `client`. An admin can assign `lead`, `employee` or `client` to another person. A user cannot promote their own role. Existing profiles with a null email or no role are completed on their next sign-in.
+Google sign-in is open to anyone with a Google account and creates a profile with the `client` role. The verified owner account is `juan32progamer@gmail.com`. In **Settings → Team access**, the owner can assign `admin`, `lead`, `employee` or `client`. An admin can assign `lead`, `employee` or `client` to another person. A user cannot promote their own role. Existing profiles with a null email or no role are completed on their next sign-in.
 
 | Role | Access |
 | --- | --- |
@@ -12,9 +12,9 @@ Google sign-in creates a profile with the `employee` role. The verified owner ac
 | Admin | Team Daily reports, projects, tasks, settings, role assignments below admin and history |
 | Lead | Projects, tasks and their own Daily reports |
 | Employee | Projects, task status and their own Daily reports |
-| Client | Assigned projects, photos on those projects and their own feedback |
+| Client | Create and view their own project requests, upload photos and leave notes through Feedback |
 
-The client role uses the project's `clientUid`. Assign an existing client account while editing the project. Projects without a client assignment remain invisible to clients. The UI and Firebase rules enforce the same access boundaries.
+The client role uses the project's `clientUid`. New client submissions assign the submitting user automatically. Admins can assign an existing client account while editing a team project. Projects without a client assignment remain invisible to clients. Existing employee profiles keep their assigned roles; the owner can change them in Settings. The UI and Firebase rules enforce the same access boundaries.
 
 Daily reports are retrieved without ordering by `createdAt`, so old reports missing that field remain visible. Non-admins query their own reports by `authorUid`, `createdBy` or `authorEmail`; admins query the collection. The archive sorts by report date and can filter by week, fortnight or exact date.
 

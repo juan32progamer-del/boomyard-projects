@@ -82,12 +82,13 @@ def document(day, accomplished, uid):
 def main():
     try:
         token = subprocess.check_output(["gcloud", "auth", "print-access-token"], text=True, stderr=subprocess.PIPE).strip()
-        users = list_docs("users", token)
-        owners = [user["name"].rsplit("/", 1)[-1] for user in users
-                  if string(user.get("fields", {}), "email").lower() == OWNER_EMAIL]
-        if len(owners) != 1:
-            raise RuntimeError(f"Expected one matching owner profile, found {len(owners)}. No reports were created.")
-        uid = owners[0]
+        existing_reports = list_docs("dailyReports", token)
+        owner_uids = {string(report.get("fields", {}), "authorUid")
+                      for report in existing_reports
+                      if string(report.get("fields", {}), "authorEmail").lower() == OWNER_EMAIL
+                      or string(report.get("fields", {}), "createdBy").lower() == OWNER_EMAIL}
+        owner_uids.discard("")
+        uid = next(iter(owner_uids)) if len(owner_uids) == 1 else ""
         for day, accomplished in REPORTS.items():
             existing = list_docs("dailyReports", token)
             if any(visible_owner_report(item.get("fields", {}), day, uid) for item in existing):

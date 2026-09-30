@@ -4,8 +4,9 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function email() { return request.auth.token.email; }
     function owner() {
-      return signedIn() && request.auth.token.get('email_verified', false) == true
-        && email() == 'juan32progamer@gmail.com';
+      return signedIn() && email() == 'juan32progamer@gmail.com'
+        && (request.auth.token.get('email_verified', false) == true
+          || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
     function profilePath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
     function role() {
@@ -101,7 +102,7 @@ service cloud.firestore {
     }
 
     match /tasks/{id} {
-      allow read: if staff();
+      allow read: if signedIn();
       allow create: if manager() && request.resource.data.createdBy == email()
         && nonDeleted(request.resource.data)
         && tracked('tasks', id, null, request.resource.data, 'create');
@@ -140,20 +141,19 @@ service cloud.firestore {
     }
 
     match /chatMessages/{id} {
-      allow read: if staff();
+      allow read: if signedIn();
       allow create: if staff() && request.resource.data.uid == request.auth.uid
         && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
       allow delete: if staff() && (admin() || resource.data.uid == request.auth.uid);
       allow update: if false;
     }
     match /goals/{id} {
-      allow read: if staff();
+      allow read: if signedIn();
       allow create, update: if manager();
       allow delete: if admin();
     }
     match /feedback/{id} {
-      allow read: if staff() || (signedIn() && role() == 'client'
-        && resource.data.get('createdBy', '') == email());
+      allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.createdBy == email();
       allow update, delete: if admin();
     }

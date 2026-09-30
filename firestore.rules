@@ -58,7 +58,7 @@ service cloud.firestore {
     }
 
     match /dailyReports/{id} {
-      allow get, list: if signedIn() && (admin() || ownReport(resource.data));
+      allow get, list: if signedIn();
       allow create: if staff() && ownReport(request.resource.data)
         && request.resource.data.get('authorUid', '') == request.auth.uid
         && request.resource.data.get('authorEmail', '') == email()
@@ -77,8 +77,7 @@ service cloud.firestore {
     }
 
     match /projects/{id} {
-      allow read: if staff() || (signedIn() && role() == 'client'
-        && resource.data.get('clientUid', '') == request.auth.uid);
+      allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.createdBy == email()
         && (staff() && (manager() || request.resource.data.get('clientUid', '') == '')
           || role() == 'client' && request.resource.data.get('clientUid', '') == request.auth.uid)

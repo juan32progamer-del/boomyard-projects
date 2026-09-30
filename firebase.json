@@ -13,6 +13,8 @@
       "README.md",
       "**/*.rules",
       "tests/**",
+      "scripts/**",
+      "**/__pycache__/**",
       "package.json",
       "package-lock.json",
       "**/.*",

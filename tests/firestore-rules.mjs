@@ -5,6 +5,7 @@ const projectId='demo-boomyard';
 const env=await initializeTestEnvironment({projectId,firestore:{rules:fs.readFileSync((process.env.RULES_FILE||new URL('../firestore.rules',import.meta.url)),'utf8')}});
 try{
  const owner=env.authenticatedContext('owner',{email:'juan32progamer@gmail.com',email_verified:true}).firestore();
+ const googleOwner=env.authenticatedContext('googleOwner',{email:'juan32progamer@gmail.com',email_verified:false,firebase:{sign_in_provider:'google.com'}}).firestore();
  const employee=env.authenticatedContext('employee',{email:'worker@example.com',email_verified:true}).firestore();
  const admin=env.authenticatedContext('admin',{email:'admin@example.com',email_verified:true}).firestore();
  const stranger=env.authenticatedContext('stranger',{email:'stranger@example.com',email_verified:true}).firestore();
@@ -17,6 +18,7 @@ try{
  await assertSucceeds(setDoc(doc(stranger,'users','stranger'),{email:'stranger@example.com',role:'client',displayName:'Stranger',googlePhoto:'',lastLogin:serverTimestamp()}));
  await assertFails(updateDoc(doc(stranger,'users','stranger'),{role:'employee'}));
  await assertSucceeds(getDoc(doc(owner,'dailyReports','legacy')));
+ await assertSucceeds(getDocs(collection(googleOwner,'goals')));
  await assertSucceeds(getDocs(collection(owner,'dailyReports')));
  await assertSucceeds(getDocs(collection(employee,'dailyReports')));
  await assertFails(updateDoc(doc(employee,'users','employee'),{role:'admin'}));
@@ -29,7 +31,7 @@ try{
  await assertFails(getDoc(doc(employee,'auditLogs','event1')));
  await assertFails(updateDoc(doc(admin,'auditLogs','event1'),{action:'create'}));
  const client=env.authenticatedContext('client',{email:'client@example.com',email_verified:true}).firestore();
- await assertSucceeds(getDoc(doc(client,'projects','p2')));await assertSucceeds(getDoc(doc(client,'projects','p1')));await assertSucceeds(getDocs((await import('firebase/firestore')).query(collection(client,'projects'),(await import('firebase/firestore')).where('clientUid','==','client'))));await assertSucceeds(getDocs(collection(client,'projects')));await assertFails(getDocs(collection(client,'chatMessages')));await assertFails(getDocs(collection(client,'users')));await assertSucceeds(getDoc(doc(client,'users','client')));
+ await assertSucceeds(getDoc(doc(client,'projects','p2')));await assertSucceeds(getDoc(doc(client,'projects','p1')));await assertSucceeds(getDocs((await import('firebase/firestore')).query(collection(client,'projects'),(await import('firebase/firestore')).where('clientUid','==','client'))));await assertSucceeds(getDocs(collection(client,'projects')));await assertSucceeds(getDocs(collection(client,'chatMessages')));await assertFails(getDocs(collection(client,'users')));await assertSucceeds(getDoc(doc(client,'users','client')));
  const clientBefore=(await getDoc(doc(client,'projects','p2'))).data(),clientChanges={attachments:[{name:'reference.png',type:'image/png'}],updatedAt:Timestamp.now(),updatedBy:'client',auditId:'clientPhoto1'};
  const clientBatch=writeBatch(client);clientBatch.update(doc(client,'projects','p2'),clientChanges);clientBatch.set(doc(client,'auditLogs','clientPhoto1'),{kind:'projects',targetId:'p2',action:'update',actorUid:'client',actorEmail:'client@example.com',at:serverTimestamp(),before:clientBefore,after:{...clientBefore,...clientChanges}});await assertSucceeds(clientBatch.commit());
  await assertFails(updateDoc(doc(client,'projects','p2'),{name:'Unauthorized rename'}));

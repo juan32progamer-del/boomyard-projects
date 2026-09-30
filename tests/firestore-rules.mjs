@@ -19,6 +19,11 @@ try{
  await assertFails(updateDoc(doc(stranger,'users','stranger'),{role:'employee'}));
  await assertSucceeds(getDoc(doc(owner,'dailyReports','legacy')));
  await assertSucceeds(getDocs(collection(googleOwner,'goals')));
+ const ownerBackfill={reportDate:'2026-09-28',accomplished:'App work',nextSteps:'Finish app',blockers:'None',hours:8,author:'Juan',authorEmail:'juan32progamer@gmail.com',authorUid:'googleOwner',createdBy:'juan32progamer@gmail.com',createdAt:Timestamp.now(),auditId:'ownerBackfillLog'};
+ const backfill=writeBatch(googleOwner);
+ backfill.set(doc(googleOwner,'dailyReports','owner-2026-09-28'),ownerBackfill);
+ backfill.set(doc(googleOwner,'auditLogs','ownerBackfillLog'),{kind:'dailyReports',targetId:'owner-2026-09-28',action:'create',actorUid:'googleOwner',actorEmail:'juan32progamer@gmail.com',at:serverTimestamp(),before:null,after:ownerBackfill});
+ await assertSucceeds(backfill.commit());
  await assertSucceeds(getDocs(collection(owner,'dailyReports')));
  await assertSucceeds(getDocs(collection(employee,'dailyReports')));
  await assertFails(updateDoc(doc(employee,'users','employee'),{role:'admin'}));
